@@ -1,7 +1,11 @@
 FROM buildpack-deps:xenial-scm
 WORKDIR /app
 RUN mkdir -p /var/run/sshd
-RUN adduser --quiet jenkins
+
+RUN apt-get update && apt-get install -y openssh-server \
+    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git wget curl python-virtualenv python-pip build-essential python-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install .NET CLI dependencies
 RUN apt-get update \
@@ -17,17 +21,10 @@ RUN apt-get update \
     libunwind8 \
     libuuid1 \
     zlib1g \
-    openssh-server \
     default-jdk \
-    git \
-    wget \
-    curl \
-    python-virtualenv \
-    python-pip \
-    build-essential \
-    python-dev \
     && rm -rf /var/lib/apt/lists/*
 
+RUN adduser --quiet jenkins
 RUN echo "jenkins ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 RUN echo "jenkins:jenkins" | chpasswd
 RUN sed -i 's|session    required     pam_loginuid.so|session    optional     pam_loginuid.so|g' /etc/pam.d/sshd
