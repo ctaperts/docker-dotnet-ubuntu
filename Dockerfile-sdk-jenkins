@@ -1,0 +1,58 @@
+FROM buildpack-deps:xenial-scm
+WORKDIR /app
+RUN mkdir -p /var/run/sshd
+RUN adduser --quiet jenkins
+
+# Install .NET CLI dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    libc6 \
+    libcurl3 \
+    libgcc1 \
+    libgssapi-krb5-2 \
+    libicu55 \
+    liblttng-ust0 \
+    libssl1.0.0 \
+    libstdc++6 \
+    libunwind8 \
+    libuuid1 \
+    zlib1g \
+    openssh-server \
+    default-jdk \
+    git \
+    wget \
+    curl \
+    python-virtualenv \
+    python-pip \
+    build-essential \
+    python-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN echo "jenkins ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+RUN echo "jenkins:jenkins" | chpasswd
+RUN sed -i 's|session    required     pam_loginuid.so|session    optional     pam_loginuid.so|g' /etc/pam.d/sshd
+
+# Install .NET Core SDK
+ENV DOTNET_SDK_VERSION 2.0.3
+ENV DOTNET_SDK_DOWNLOAD_URL https://dotnetcli.blob.core.windows.net/dotnet/Sdk/$DOTNET_SDK_VERSION/dotnet-sdk-$DOTNET_SDK_VERSION-linux-x64.tar.gz
+ENV DOTNET_SDK_DOWNLOAD_SHA 74a0741d4261d6769f29a5f1ba3e8ff44c79f17bbfed5e240c59c0aa104f92e93f5e76b1a262bdfab3769f3366e33ea47603d9d725617a75cad839274ebc5f2b
+
+RUN wget --quiet --no-check-certificate -O dotnet.tar.gz $DOTNET_SDK_DOWNLOAD_URL \
+    && echo "$DOTNET_SDK_DOWNLOAD_SHA dotnet.tar.gz" | sha512sum -c - \
+    && mkdir -p /usr/share/dotnet \
+    && tar -zxf dotnet.tar.gz -C /usr/share/dotnet \
+    && rm dotnet.tar.gz \
+    && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
+
+# Trigger the population of the local package cache
+ENV NUGET_XMLDOC_MODE skip
+RUN mkdir warmup \
+    && cd warmup \
+    && dotnet new \
+    && cd .. \
+    && rm -rf warmup \
+    && rm -rf /tmp/NuGetScratch
+
+EXPOSE 22
+
+CMD ["/usr/sbin/sshd", "-D"]

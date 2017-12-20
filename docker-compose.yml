@@ -1,0 +1,14 @@
+version: '3'
+services:
+  dotnet:
+    ports:
+      - "81"
+    volumes:
+     - ./redroom:/app
+    image: "colbyt/dotnet-ubuntu"
+    command: bash -c "dotnet restore && dotnet publish -c Release && dotnet /app/bin/Release/netcoreapp2.0/RedRoomAPI.dll"
+    networks:
+      - dotnetwork
+networks:
+  dotnetwork:
+
